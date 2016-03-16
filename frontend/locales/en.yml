@@ -1,0 +1,8 @@
+en:
+  enumerations:
+    job_type:
+      barcoder_job: Barcoder Job  
+  plugins:
+    barcoder:
+      target: Target Resource
+      label: Barcode Resources
