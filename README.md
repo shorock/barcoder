@@ -21,19 +21,19 @@ See? There are now two seperate "Box 1" containers that are differentited by the
 
 ## To Install:
 
-1.Download and unpack the plugin to your ArchivesSpace plugins directory. Make
+1. Download and unpack the plugin to your ArchivesSpace plugins directory. Make
 sure the name of the directory is "barcoder"  ( not "barcoder-master" or any
 other branch information Github adds )
-2.Add "barcoder" to your config/config.rb AppConfig[:plugins] list
-3.Restart ArchivesSpace
+2. Add "barcoder" to your config/config.rb AppConfig[:plugins] list
+3. Restart ArchivesSpace
 
 ## To Use:
-Logged in as a repository administrator, go to Plugins --> Barcode Resources. 
-Select a Resource in the linker box and click submit.
+* Logged in as a repository administrator, go to Plugins --> Barcode Resources. 
+* Select a Resource in the linker box and click submit.
 
 ## To Uninstall:
 
-You will need to remove any job record in your database that point to this:
+You will need to remove any job records in your database that point to this:
 ```
 DELETE FROM job WHERE job_type_id = ( SELECT id from enumeration_value WHERE
 value = 'barcoder_job' ); )
