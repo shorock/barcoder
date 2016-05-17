@@ -42,30 +42,41 @@ class BarcoderRunner < JobRunner
   def run
     super
 
-    job_data = @json.job
-    parsed = JSONModel.parse_reference(job_data['ref'])
-    target = Resource.any_repo[parsed[:id]]
-
-
+   
     begin
       DB.open( DB.supports_mvcc?, 
              :retry_on_optimistic_locking_fail => true ) do
         begin
           RequestContext.open( :current_username => @job.owner.username,
                               :repo_id => @job.repo_id) do  
-            @job.write_output( "Starting resource #{target.id}" ) 
-            
-            updated_records = []
-            # we take the resource and take it's first level children... 
-            target.children.each do |ao|
-              # this is the baseline for all the barcodes we'll generate.. 
-              barcode = "aspace.#{ao.id}" 
-              # we look it there are an 
-              updated_records += process_children( ao, barcode)  
+            job_data = @json.job
+            parsed = JSONModel.parse_reference(job_data['ref'])
+         
+            $stderr.puts parsed
+            if parsed[:type] == "repository"
+              targets = Resource.filter(:repo_id => parsed[:id]) || []
+            else 
+              targets = [ Resource.any_repo[parsed[:id]] ]
             end
-            @job.write_output( "Finishing #{target.id}" ) 
-            @job.record_created_uris(updated_records.uniq) 
-          end 
+            @job.write_output( "Barcode job started for" ) 
+         
+            targets.each do |target|
+              
+              @job.write_output( "Starting resource #{target[:id]}" ) 
+              
+              updated_records = []
+              # we take the resource and take it's first level children... 
+              target.children.each do |ao|
+                # this is the baseline for all the barcodes we'll generate.. 
+                barcode = "aspace.#{ao.id}" 
+                # we look it there are an 
+                updated_records += process_children( ao, barcode)  
+              end
+              @job.write_output( "Finishing #{target.id}" ) 
+              @job.record_created_uris(updated_records.uniq) 
+            end 
+            @job.write_output( "Barcode job completed" ) 
+        end 
         rescue Exception => e
           terminal_error = e
           @job.write_output(terminal_error.message)
