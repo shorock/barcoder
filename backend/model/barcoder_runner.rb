@@ -9,55 +9,78 @@ class BarcoderRunner < JobRunner
     end
   end
 
-  def barcode( ao, barcode = nil )
-    barcode ||= "aspace.#{ao.id}" 
-            $stderr.puts "2" * 100 
-            $stderr.puts barcode 
-            $stderr.puts ao.inspect 
-            $stderr.puts "2" * 100 
-     
-    ao.instance.each do |instance|
+  def get_barcode( container, barcode = nil )
+    type = container.type_1 || "notype" 
+    indicator = container.indicator_1 || "noindicator" 
+    "#{barcode}.#{type}.#{indicator}"
+  end
+  
+  def process_children(record, barcode)
+    updated_records = [] 
+    record.children.each do |child|
+      updated_records += process_record(child, barcode)
+      updated_records += process_children(child, barcode)
+    end
+    updated_records 
+  end
+ 
+  def process_record(record, barcode)
+    updated_records = [] 
+    @job.write_output( "processing record #{record.id}" ) 
+    record.instance.each do |instance|
       instance.container.each do |container|
-        type = container.type_1 || "notype" 
-        indicator = container.indicator_1 || "noindicator" 
-        container.barcode_1 = "#{barcode}.#{type}.#{indicator}"
-        $stderr.puts container.save
-        $stderr.puts "3" * 100 
+        next if container.barcode_1
+        container.barcode_1 = get_barcode(container,barcode) 
+        @job.write_output( "adding container barcode #{container.barcode_1} to record #{record.id}" ) 
+        container.save              
+        updated_records << "/repositories/#{@job.repo_id}/archival_objects/#{record.id}" 
       end 
     end
-    
-    ao.children.each do |child|
-      barcode(child, barcode)
-    end
-  
+    updated_records 
   end
-
+  
   def run
     super
 
-    job_data = @json.job
-    parsed = JSONModel.parse_reference(job_data['ref'])
-    target = Resource.any_repo[parsed[:id]]
-
-
+   
     begin
       DB.open( DB.supports_mvcc?, 
              :retry_on_optimistic_locking_fail => true ) do
         begin
           RequestContext.open( :current_username => @job.owner.username,
                               :repo_id => @job.repo_id) do  
-            @job.write_output( "Starting resource #{target.id}" ) 
-             
-            $stderr.puts "1" * 100 
-            $stderr.puts target.children.inspect 
-            $stderr.puts "1" * 100 
-            target.children.each do |ao|
-              barcode(ao) 
+            job_data = @json.job
+            parsed = JSONModel.parse_reference(job_data['ref'])
+         
+            $stderr.puts parsed
+            if parsed[:type] == "repository"
+              targets = Resource.filter(:repo_id => parsed[:id]) || []
+            else 
+              targets = [ Resource.any_repo[parsed[:id]] ]
             end
-            @job.write_output( "Finishing #{target.id}" ) 
-          end 
+            @job.write_output( "Barcode job started for" ) 
+         
+            targets.each do |target|
+              
+              @job.write_output( "Starting resource #{target[:id]}" ) 
+              
+              updated_records = []
+              # we take the resource and take it's first level children... 
+              target.children.each do |ao|
+                # this is the baseline for all the barcodes we'll generate.. 
+                barcode = "aspace.#{ao.id}" 
+                # we look it there are an 
+                updated_records += process_children( ao, barcode)  
+              end
+              @job.write_output( "Finishing #{target.id}" ) 
+              @job.record_created_uris(updated_records.uniq) 
+            end 
+            @job.write_output( "Barcode job completed" ) 
+        end 
         rescue Exception => e
           terminal_error = e
+          @job.write_output(terminal_error.message)
+          @job.write_output(terminal_error.backtrace)
           raise Sequel::Rollback
         end
       end

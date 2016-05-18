@@ -1,0 +1,12 @@
+<% if controller.controller_name == 'jobs' && controller.action_name == 'show' %>
+
+  <% define_template "barcoder_job", jsonmodel_definition(:barcoder_job) do |form, job| %>
+
+      <div class="form-group">
+        <label class="control-label"><%= I18n.t("plugins.barcoder.target")  %></label>
+        <%= link_to I18n.t("actions.view"), {:controller => :resolver, :action => :resolve_readonly, :uri => job["ref"]}, :class => "btn btn-xs btn-default" %> 
+      </div>
+
+  <% end %>
+
+<% end %>
