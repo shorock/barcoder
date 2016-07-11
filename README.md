@@ -10,6 +10,12 @@ For example,
 
 will be given a barcode of 'aspace.456.Box.1'.
 
+## Warning
+
+It is **strongly** recommended that you use the barcoder plugin on a copy of your database and test an upgrade with it **BEFORE** using it on your actual production database. *There has been at least one report of an inability to successfully upgrade having used this plugin when run over an entire repository*. It led to broken (looping) indexing and out of memory errors. There is no resolution for this currently.
+
+As for any upgrade, **be sure to make a backup copy of your database to revert to if necessary**.
+
 # __Why?__ 
 
 
