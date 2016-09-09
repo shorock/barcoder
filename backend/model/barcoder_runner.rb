@@ -69,7 +69,8 @@ class BarcoderRunner < JobRunner
               target.children.each do |ao|
                 # this is the baseline for all the barcodes we'll generate.. 
                 barcode = "aspace.#{ao.id}" 
-                # we look it there are an 
+                # we look it there are an
+                updated_records += process_record(ao, barcode)
                 updated_records += process_children( ao, barcode)  
               end
               @job.write_output( "Finishing #{target.id}" ) 
